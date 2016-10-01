@@ -1,0 +1,117 @@
+---
+- hosts: zookeepers
+  vars:
+    zookeeper_version: 3.4.9
+  become: true
+  user: vagrant
+  tasks:
+    - name: install yum packages
+      yum:
+        name: "{{item}}"
+        state: installed
+      with_items:
+        - wget
+        - java-1.8.0-openjdk
+
+    - name: check solr installed or not
+      stat:
+        path: /var/zookeeper/myid
+      register: zk_file
+
+    - name: download zookeeper
+      get_url:
+        url: http://ftp.jaist.ac.jp/pub/apache/zookeeper/zookeeper-{{zookeeper_version}}/zookeeper-{{zookeeper_version}}.tar.gz 
+        url: http://archive.apache.org/dist/zookeeper/zookeeper-{{zookeeper_version}}/zookeeper-{{zookeeper_version}}.tar.gz
+        dest: /tmp/zookeeper-{{zookeeper_version}}.tar.gz
+      when: not zk_file.stat.exists
+
+    - name: extract zookeeper tar ball
+      unarchive:
+        src: /tmp/zookeeper-{{zookeeper_version}}.tar.gz
+        dest: /opt/
+        copy: no
+      when: not zk_file.stat.exists
+
+    - name: create symbolic link
+      file:
+        src: /opt/zookeeper-{{zookeeper_version}}
+        dest: /opt/zookeeper
+        state: link
+      when: not zk_file.stat.exists
+
+    - name: create data dir for zookeeper 
+      file: 
+        path: /var/zookeeper 
+        state: directory 
+        owner: root
+      when: not zk_file.stat.exists
+          
+    - name: create myid file
+      shell: echo "1" > /var/zookeeper/myid
+
+    - name: place zoo.cfg file
+      copy:
+        src: zoo.cfg
+        dest: /opt/zookeeper/conf/zoo.cfg
+      when: not zk_file.stat.exists
+
+    - name: start zookeeper
+      shell: /opt/zookeeper/bin/zkServer.sh start
+
+
+- hosts: solr_servers
+  vars:
+    solr_version: 6.2.1
+    zookeeper_host: 192.168.110.100
+    solr_ports:
+      - 8901
+      - 8902
+  become: true
+  user: vagrant
+  tasks:
+    - name: install yum packages
+      yum:
+        name: "{{item}}"
+        state: installed
+      with_items:
+        - wget
+        - java-1.8.0-openjdk
+
+    - name: check solr downloaded or not
+      stat:
+        path: /opt/solr-{{ solr_version }}/LICENSE.txt
+      register: solrfile
+
+    - name: download solr
+      get_url: 
+         url: http://archive.apache.org/dist/lucene/solr/{{solr_version}}/solr-{{solr_version}}.tgz
+         dest: /tmp/solr-{{solr_version}}.tgz
+      when: not solrfile.stat.exists
+
+    - name: extract solr tar ball
+      unarchive:
+        src: /tmp/solr-{{solr_version}}.tgz
+        dest: /tmp/
+        copy: no
+      when: not solrfile.stat.exists
+
+    - name: install solr
+      shell: test -x /etc/init.d/solr_node_{{ item }} || /tmp/solr-6.2.1/bin/install_solr_service.sh /tmp/solr-{{solr_version}}.tgz -p {{ item }} -s solr_node_{{ item }}
+      with_items: 
+        - "{{ solr_ports }}"
+
+    - name: set solr host
+      shell: sed -i -e "s/^.*\(SOLR_HOST=\).*/\1\"$(ip a show dev eth1 |egrep "inet\s"|awk 'match($2, /([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/) {print substr($2,RSTART,RLENGTH)}')\"/" /etc/default/solr_node_{{ item }}.in.sh
+      with_items: 
+        - "{{ solr_ports }}"
+
+    - name: set zookeeper host
+      shell: sed -i -e "s/#\(ZK_HOST=\).*/\1{{zookeeper_host}}:2181/" /etc/default/solr_node_{{ item }}.in.sh
+      with_items: 
+        - "{{ solr_ports }}"
+
+    - name: restart solr
+      shell: service solr_node_{{ item }} restart 
+      with_items: 
+        - "{{ solr_ports }}"
+

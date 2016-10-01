@@ -1,0 +1,5 @@
+[zookeepers]
+zk1
+[solr_servers]
+solr1
+solr2
