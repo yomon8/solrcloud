@@ -1,7 +1,9 @@
 ---
 - hosts: zookeepers
   vars:
-    zookeeper_version: 3.4.9
+    zookeeper:
+      version: 3.4.9
+      md5checksum: 3e8506075212c2d41030d874fcc9dcd2
   become: true
   user: vagrant
   tasks:
@@ -20,21 +22,22 @@
 
     - name: download zookeeper
       get_url:
-        url: http://ftp.jaist.ac.jp/pub/apache/zookeeper/zookeeper-{{zookeeper_version}}/zookeeper-{{zookeeper_version}}.tar.gz 
-        url: http://archive.apache.org/dist/zookeeper/zookeeper-{{zookeeper_version}}/zookeeper-{{zookeeper_version}}.tar.gz
-        dest: /tmp/zookeeper-{{zookeeper_version}}.tar.gz
+        url: http://archive.apache.org/dist/zookeeper/zookeeper-{{zookeeper.version}}/zookeeper-{{zookeeper.version}}.tar.gz
+        dest: /tmp/zookeeper-{{zookeeper.version}}.tar.gz
+        checksum:
+          md5:{{zookeeper.md5checksum}}
       when: not zk_file.stat.exists
 
     - name: extract zookeeper tar ball
       unarchive:
-        src: /tmp/zookeeper-{{zookeeper_version}}.tar.gz
+        src: /tmp/zookeeper-{{zookeeper.version}}.tar.gz
         dest: /opt/
         copy: no
       when: not zk_file.stat.exists
 
     - name: create symbolic link
       file:
-        src: /opt/zookeeper-{{zookeeper_version}}
+        src: /opt/zookeeper-{{zookeeper.version}}
         dest: /opt/zookeeper
         state: link
       when: not zk_file.stat.exists
@@ -61,7 +64,9 @@
 
 - hosts: solr_servers
   vars:
-    solr_version: 6.2.1
+    solr:
+      version: 6.2.1
+      md5checksum: 5a781a109446aa8b6d31ed41b83d1f69
     zookeeper_host: 192.168.110.100
     solr_ports:
       - 8901
@@ -77,26 +82,28 @@
         - wget
         - java-1.8.0-openjdk
 
-    - name: check solr downloaded or not
+    - name: check solr installed or not
       stat:
-        path: /opt/solr-{{ solr_version }}/LICENSE.txt
+        path: /opt/solr-{{ solr.version }}/LICENSE.txt
       register: solrfile
 
     - name: download solr
       get_url: 
-         url: http://archive.apache.org/dist/lucene/solr/{{solr_version}}/solr-{{solr_version}}.tgz
-         dest: /tmp/solr-{{solr_version}}.tgz
+         url: http://archive.apache.org/dist/lucene/solr/{{solr.version}}/solr-{{solr.version}}.tgz
+         dest: /tmp/solr-{{solr.version}}.tgz
+         checksum:
+           md5:{{solr.md5checksum}}
       when: not solrfile.stat.exists
 
     - name: extract solr tar ball
       unarchive:
-        src: /tmp/solr-{{solr_version}}.tgz
+        src: /tmp/solr-{{solr.version}}.tgz
         dest: /tmp/
         copy: no
       when: not solrfile.stat.exists
 
     - name: install solr
-      shell: test -x /etc/init.d/solr_node_{{ item }} || /tmp/solr-6.2.1/bin/install_solr_service.sh /tmp/solr-{{solr_version}}.tgz -p {{ item }} -s solr_node_{{ item }}
+      shell: test -x /etc/init.d/solr_node_{{ item }} || /tmp/solr-6.2.1/bin/install_solr_service.sh /tmp/solr-{{solr.version}}.tgz -p {{ item }} -s solr_node_{{ item }}
       with_items: 
         - "{{ solr_ports }}"
 
