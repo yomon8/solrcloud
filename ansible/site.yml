@@ -2,7 +2,7 @@
 - hosts: zookeepers
   vars:
     zookeeper:
-      download_site: archive.apache.org/dist
+      download_site: ftp.riken.jp/net/apache
       version: 3.4.9
       md5checksum: 3e8506075212c2d41030d874fcc9dcd2
   become: true
@@ -66,7 +66,7 @@
 - hosts: solr_servers
   vars:
     solr:
-      download_site: archive.apache.org/dist
+      download_site: ftp.riken.jp/net/apache
       version: 6.2.1
       md5checksum: 5a781a109446aa8b6d31ed41b83d1f69
       ports:
