@@ -15,7 +15,7 @@
         - wget
         - java-1.8.0-openjdk
 
-    - name: check solr installed or not
+    - name: check zookeeper installed or not
       stat:
         path: /var/zookeeper/myid
       register: zk_file
@@ -29,10 +29,9 @@
       when: not zk_file.stat.exists
 
     - name: extract zookeeper tar ball
-      unarchive:
-        src: /tmp/zookeeper-{{zookeeper.version}}.tar.gz
-        dest: /opt/
-        copy: no
+      shell: tar zxf /tmp/zookeeper-{{zookeeper.version}}.tar.gz
+      args:
+        chdir: /opt
       when: not zk_file.stat.exists
 
     - name: create symbolic link
