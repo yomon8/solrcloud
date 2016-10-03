@@ -95,10 +95,9 @@
       when: not solrfile.stat.exists
 
     - name: extract solr tar ball
-      unarchive:
-        src: /tmp/solr-{{solr.version}}.tgz
-        dest: /tmp/
-        copy: no
+      shell: tar xf /tmp/solr-{{solr.version}}.tgz
+      args:
+        chdir: /tmp
       when: not solrfile.stat.exists
 
     - name: install solr
