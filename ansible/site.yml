@@ -2,7 +2,6 @@
 - hosts: zookeepers
   vars:
     zookeeper:
-      download_site: ftp.riken.jp/net
       version: 3.4.9
       md5checksum: 3e8506075212c2d41030d874fcc9dcd2
   become: true
@@ -23,7 +22,7 @@
 
     - name: download zookeeper
       get_url:
-        url: http://{{ zookeeper.download_site }}/zookeeper/zookeeper-{{zookeeper.version}}/zookeeper-{{zookeeper.version}}.tar.gz
+        url: http://archive.apache.org/dist/zookeeper/zookeeper-{{zookeeper.version}}/zookeeper-{{zookeeper.version}}.tar.gz
         dest: /tmp/zookeeper-{{zookeeper.version}}.tar.gz
         checksum:
           md5:{{zookeeper.md5checksum}}
@@ -66,13 +65,12 @@
 - hosts: solr_servers
   vars:
     solr:
-      download_site: ftp.riken.jp/net
       version: 6.2.1
       md5checksum: 5a781a109446aa8b6d31ed41b83d1f69
-      ports:
-        - 8901
-        - 8902
     zookeeper_host: 192.168.110.100
+    solr_ports:
+      - 8901
+      - 8902
   become: true
   user: vagrant
   tasks:
@@ -91,7 +89,7 @@
 
     - name: download solr
       get_url: 
-         url: http://{{ solr.download_site }}/lucene/solr/{{solr.version}}/solr-{{solr.version}}.tgz
+         url: http://archive.apache.org/dist/lucene/solr/{{solr.version}}/solr-{{solr.version}}.tgz
          dest: /tmp/solr-{{solr.version}}.tgz
          checksum:
            md5:{{solr.md5checksum}}
@@ -107,20 +105,20 @@
     - name: install solr
       shell: test -x /etc/init.d/solr_node_{{ item }} || /tmp/solr-6.2.1/bin/install_solr_service.sh /tmp/solr-{{solr.version}}.tgz -p {{ item }} -s solr_node_{{ item }}
       with_items: 
-        - "{{ solr.ports }}"
+        - "{{ solr_ports }}"
 
     - name: set solr host
       shell: sed -i -e "s/^.*\(SOLR_HOST=\).*/\1\"$(ip a show dev eth1 |egrep "inet\s"|awk 'match($2, /([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/) {print substr($2,RSTART,RLENGTH)}')\"/" /etc/default/solr_node_{{ item }}.in.sh
       with_items: 
-        - "{{ solr.ports }}"
+        - "{{ solr_ports }}"
 
     - name: set zookeeper host
       shell: sed -i -e "s/#\(ZK_HOST=\).*/\1{{zookeeper_host}}:2181/" /etc/default/solr_node_{{ item }}.in.sh
       with_items: 
-        - "{{ solr.ports }}"
+        - "{{ solr_ports }}"
 
     - name: restart solr
       shell: service solr_node_{{ item }} restart 
       with_items: 
-        - "{{ solr.ports }}"
+        - "{{ solr_ports }}"
 
